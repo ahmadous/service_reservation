@@ -13,7 +13,17 @@ class CategoryService {
   Future<List<CategoryModel>> getCategories() async {
     QuerySnapshot snapshot = await _firestore.collection('categories').get();
     return snapshot.docs.map((doc) {
-      return CategoryModel.fromFirestore(doc.data() as Map<String, dynamic>, doc.id);
+      return CategoryModel.fromFirestore(
+          doc.data() as Map<String, dynamic>, doc.id);
     }).toList();
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    await _firestore.collection('categories').doc(categoryId).delete();
+  }
+
+  Future<void> updateCategory(
+      String categoryId, Map<String, dynamic> data) async {
+    await _firestore.collection('categories').doc(categoryId).update(data);
   }
 }

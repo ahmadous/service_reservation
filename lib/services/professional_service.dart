@@ -47,5 +47,23 @@ class ProfessionalService {
     }).toList();
   }
 
-  // Vous pouvez ajouter d'autres méthodes si nécessaire
+// Vérifie s'il y a des réservations pour une catégorie
+  Future<bool> hasReservationsForCategory(String categoryName) async {
+    final snapshot = await _firestore
+        .collection('reservations')
+        .where('category', isEqualTo: categoryName)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+// Supprime une catégorie
+  Future<void> deleteCategory(String categoryId) async {
+    await _firestore.collection('categories').doc(categoryId).delete();
+  }
+
+// Met à jour une catégorie
+  Future<void> updateCategory(
+      String categoryId, Map<String, dynamic> data) async {
+    await _firestore.collection('categories').doc(categoryId).update(data);
+  }
 }

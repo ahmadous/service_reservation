@@ -34,10 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
-    _loadCategories();
-    _loadProfessionals();
-    _loadUserReservations();
+    _initializeData();
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -48,8 +45,164 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // Initialise les données
+  Future<void> _initializeData() async {
+    await Future.wait([
+      _loadUserRole(),
+      _loadCategories(),
+      _loadProfessionals(),
+      _loadUserReservations(),
+    ]);
+  }
+
+  Future<void> _handleCategoryAction(
+      String action, CategoryModel category) async {
+    if (action == 'edit') {
+      _showEditCategoryDialog(category);
+    } else if (action == 'delete') {
+      bool isCategoryEmpty =
+          _professionals.where((pro) => pro.category == category.name).isEmpty;
+
+      if (isCategoryEmpty) {
+        await _categoryService.deleteCategory(category.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Catégorie supprimée avec succès.")),
+        );
+        await _loadCategories(); // Recharger les catégories
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                "Impossible de supprimer la catégorie. Elle contient des professionnels."),
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildReservationSection() {
+    final Color blueColor = Color(0xFF0055A4);
+    final Color whiteColor = Colors.white;
+    final Color redColor = Color(0xFFEF4135);
+
+    if (_reservations.isEmpty) {
+      return SizedBox.shrink(); // Si aucune réservation, ne rien afficher
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Mes Réservations",
+            style: TextStyle(
+              color: blueColor,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          ListView.builder(
+            shrinkWrap: true, // Permet à la liste de s'adapter à son contenu
+            physics:
+                NeverScrollableScrollPhysics(), // Désactive le défilement indépendant
+            itemCount: _reservations.length,
+            itemBuilder: (context, index) {
+              final reservation = _reservations[index];
+              return Card(
+                margin: EdgeInsets.symmetric(vertical: 8.0),
+                elevation: 3.0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: ListTile(
+                  leading: Icon(
+                    Icons.calendar_today,
+                    color: blueColor,
+                    size: 30,
+                  ),
+                  title: Text(
+                    "Service ID : ${reservation.serviceId}",
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: blueColor),
+                  ),
+                  subtitle: Text(
+                    "Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(reservation.reservationDateTime)}",
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                  trailing: Text(
+                    reservation.status,
+                    style: TextStyle(
+                      color: reservation.status == 'confirmée'
+                          ? Colors.green
+                          : Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ReservationScreen(
+                          serviceId: reservation.serviceId,
+                          reservationDateTime: reservation.reservationDateTime,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditCategoryDialog(CategoryModel category) {
+    final TextEditingController _editNameController =
+        TextEditingController(text: category.name);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Modifier la catégorie"),
+          content: TextField(
+            controller: _editNameController,
+            decoration: InputDecoration(labelText: "Nom de la catégorie"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newName = _editNameController.text.trim();
+                if (newName.isNotEmpty) {
+                  await _categoryService.updateCategory(
+                    category.id,
+                    {'name': newName},
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Catégorie modifiée avec succès.")),
+                  );
+                  await _loadCategories(); // Recharger les catégories
+                  Navigator.pop(context);
+                }
+              },
+              child: Text("Enregistrer"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Charge le rôle de l'utilisateur actuel
-  void _loadUserRole() async {
+  Future<void> _loadUserRole() async {
     final user = _authService.currentUser;
     if (user != null) {
       final userData = await _authService.getUserProfile(user.uid);
@@ -130,7 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Navigue vers l'écran de création de catégorie et ajoute la catégorie créée à la liste
+  // Navigue vers l'écran de création de catégorie et recharge automatiquement
   Future<void> _goToCreateCategory() async {
     final newCategory = await Navigator.push(
       context,
@@ -140,10 +293,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (newCategory != null && newCategory is CategoryModel) {
-      setState(() {
-        _categories.add(newCategory);
-        _filteredCategories = _categories; // Met à jour la liste filtrée
-      });
+      await _loadCategories(); // Recharge les catégories après ajout
     }
   }
 
@@ -174,123 +324,68 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [blueColor, whiteColor, redColor],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Column(
-          children: [
-            // Barre de recherche
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: "Rechercher un professionnel ou une catégorie",
-                  prefixIcon: Icon(Icons.search, color: blueColor),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-              ),
+      body: RefreshIndicator(
+        onRefresh: _initializeData, // Action effectuée lorsque l'écran est tiré
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [blueColor, whiteColor, redColor],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            // Bouton pour ajouter une catégorie visible pour les prestataires
-            if (_userRole == 'prestataire')
+          ),
+          child: Column(
+            children: [
+              // Barre de recherche
               Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton(
-                  onPressed: _goToCreateCategory,
-                  child: Text(
-                    "Ajouter une catégorie",
-                    style: TextStyle(color: whiteColor),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: redColor,
-                    shape: RoundedRectangleBorder(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: "Rechercher un professionnel ou une catégorie",
+                    prefixIcon: Icon(Icons.search, color: blueColor),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                   ),
                 ),
               ),
-            // Section des réservations
-            if (_reservations.isNotEmpty) _buildReservationSection(),
-            // Liste des catégories ou des professionnels en fonction de la recherche
-            Expanded(
-              child: _isSearchingProfessionals
-                  ? _buildProfessionalList()
-                  : _buildCategoryList(),
-            ),
-          ],
+              // Bouton pour ajouter une catégorie visible pour les prestataires
+              if (_userRole == 'prestataire')
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton(
+                    onPressed: _goToCreateCategory,
+                    child: Text(
+                      "Ajouter une catégorie",
+                      style: TextStyle(color: whiteColor),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: redColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                    ),
+                  ),
+                ),
+              // Section des réservations
+              if (_reservations.isNotEmpty) _buildReservationSection(),
+              // Liste des catégories ou des professionnels en fonction de la recherche
+              Expanded(
+                child: _isSearchingProfessionals
+                    ? _buildProfessionalList()
+                    : _buildCategoryList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildReservationSection() {
-    final Color blueColor = Color(0xFF0055A4);
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Mes Réservations",
-            style: TextStyle(
-              color: blueColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            itemCount: _reservations.length,
-            itemBuilder: (context, index) {
-              final reservation = _reservations[index];
-              return Card(
-                margin: EdgeInsets.symmetric(vertical: 8.0),
-                child: ListTile(
-                  title: Text(
-                    "Service : ${reservation.serviceId}",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                      "Date : ${DateFormat('dd/MM/yyyy à HH:mm').format(reservation.reservationDateTime)}"),
-                  trailing: Text(
-                    reservation.status,
-                    style: TextStyle(
-                      color: reservation.status == 'confirmée'
-                          ? Colors.green
-                          : Colors.red,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ReservationScreen(
-                          serviceId: reservation.serviceId,
-                          reservationDateTime: reservation.reservationDateTime,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  // Les méthodes _buildReservationSection, _buildProfessionalList, et _buildCategoryList restent inchangées
 
   Widget _buildProfessionalList() {
     final Color blueColor = Color(0xFF0055A4);
@@ -377,6 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCategoryList() {
     final Color blueColor = Color(0xFF0055A4);
     final Color whiteColor = Colors.white;
+    final Color redColor = Color(0xFFEF4135);
 
     if (_filteredCategories.isEmpty) {
       return Center(
@@ -393,6 +489,7 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: _filteredCategories.length,
         itemBuilder: (context, index) {
           final category = _filteredCategories[index];
+
           return Card(
             margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             elevation: 4.0,
@@ -414,10 +511,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              trailing: Icon(
-                Icons.arrow_forward_ios,
-                color: blueColor,
-              ),
+              trailing: _userRole == 'prestataire'
+                  ? PopupMenuButton<String>(
+                      onSelected: (value) =>
+                          _handleCategoryAction(value, category),
+                      itemBuilder: (BuildContext context) => [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: blueColor),
+                              SizedBox(width: 8),
+                              Text("Modifier"),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete, color: redColor),
+                              SizedBox(width: 8),
+                              Text("Supprimer"),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : Icon(
+                      Icons.arrow_forward_ios,
+                      color: blueColor,
+                    ),
               onTap: () => _goToCategoryDetail(category),
             ),
           );

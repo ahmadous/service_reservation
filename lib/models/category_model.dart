@@ -1,6 +1,6 @@
 class CategoryModel {
   final String id;
-  final String name;
+  String name;
   final String? description;
   final String? imageUrl;
 
@@ -12,7 +12,8 @@ class CategoryModel {
   });
 
   // Convertit un document Firestore en instance de CategoryModel
-  factory CategoryModel.fromFirestore(Map<String, dynamic> data, String documentId) {
+  factory CategoryModel.fromFirestore(
+      Map<String, dynamic> data, String documentId) {
     return CategoryModel(
       id: documentId,
       name: data['name'] ?? '',

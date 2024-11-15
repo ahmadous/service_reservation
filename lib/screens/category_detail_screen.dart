@@ -39,6 +39,35 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     super.dispose();
   }
 
+  void _handleCategoryAction(String action) async {
+    if (action == 'edit') {
+      _showEditCategoryDialog();
+    } else if (action == 'delete') {
+      // Vérifier s'il y a des réservations pour cette catégorie
+      bool hasReservations = await _professionalService
+          .hasReservationsForCategory(widget.category.name);
+
+      if (!hasReservations) {
+        await _deleteCategory();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                "Impossible de supprimer la catégorie. Des réservations existent."),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteCategory() async {
+    await _professionalService.deleteCategory(widget.category.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Catégorie supprimée avec succès.")),
+    );
+    Navigator.pop(context); // Retourner à l'écran précédent
+  }
+
   // Charge les professionnels de la catégorie
   Future<void> _loadProfessionals() async {
     List<ProfessionalModel> professionals = await _professionalService
@@ -47,6 +76,49 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       _professionals = professionals;
       _filteredProfessionals = professionals;
     });
+  }
+
+  void _showEditCategoryDialog() {
+    final TextEditingController _editNameController =
+        TextEditingController(text: widget.category.name);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Modifier la catégorie"),
+          content: TextField(
+            controller: _editNameController,
+            decoration: InputDecoration(labelText: "Nom de la catégorie"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newName = _editNameController.text.trim();
+                if (newName.isNotEmpty) {
+                  await _professionalService.updateCategory(
+                    widget.category.id,
+                    {'name': newName},
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Catégorie modifiée avec succès.")),
+                  );
+                  setState(() {
+                    widget.category.name = newName; // Mettre à jour localement
+                  });
+                  Navigator.pop(context);
+                }
+              },
+              child: Text("Enregistrer"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Charge le rôle de l'utilisateur
@@ -118,6 +190,35 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         ),
         backgroundColor: blueColor,
         centerTitle: true,
+        actions: _userRole == 'prestataire'
+            ? [
+                PopupMenuButton<String>(
+                  onSelected: (value) => _handleCategoryAction(value),
+                  itemBuilder: (BuildContext context) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, color: blueColor),
+                          SizedBox(width: 8),
+                          Text("Modifier"),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: redColor),
+                          SizedBox(width: 8),
+                          Text("Supprimer"),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ]
+            : [],
       ),
       body: Container(
         decoration: BoxDecoration(
