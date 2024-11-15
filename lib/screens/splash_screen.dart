@@ -19,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
     _startSplashScreenTimer();
   }
 
-  void _startSplashScreenTimer() async {
+  void _startSplashScreenTimer() {
     var _duration = Duration(seconds: 3);
     Timer(_duration, _navigateToNextScreen);
   }
@@ -63,11 +63,12 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo ou icône de l'application
-              Icon(
-                Icons.work_outline,
-                size: 100,
-                color: whiteColor,
+              // Affiche le logo
+              Image.asset(
+                'assets/img/service_logo.png',
+                height: 120,
+                width: 120,
+                fit: BoxFit.contain,
               ),
               SizedBox(height: 20),
               Text(
