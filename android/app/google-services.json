@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "290118640722",
+    "project_id": "searchpro-eeac5",
+    "storage_bucket": "searchpro-eeac5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:290118640722:android:79f6b6cfd227b70719ab8b",
+        "android_client_info": {
+          "package_name": "com.ahmadou.service_reservation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCivbbT4PAuMjqXNbF4PZAyy9-6FBOB6VU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:290118640722:android:6dd881cecc8d39ad19ab8b",
+        "android_client_info": {
+          "package_name": "com.me.searchpro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCivbbT4PAuMjqXNbF4PZAyy9-6FBOB6VU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
