@@ -70,13 +70,18 @@ class _SplashScreenState extends State<SplashScreen> {
                 width: 120,
                 fit: BoxFit.contain,
               ),
-              SizedBox(height: 20),
-              Text(
-                "Bienvenue dans notre application",
-                style: TextStyle(
-                  color: whiteColor,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              SizedBox(height: 30),
+              Center(
+                child: Container(
+                  margin: EdgeInsets.symmetric(vertical: 2, horizontal: 50),
+                  child: Text(
+                    "Bienvenue",
+                    style: TextStyle(
+                      color: blueColor,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
               SizedBox(height: 20),
